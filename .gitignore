@@ -1,0 +1,7 @@
+# Ignore
+#
+# envs
+.venv
+
+# IDE dirs
+.vscode
