@@ -18,12 +18,12 @@ class NotYouTubeURL(Exception):
 
 def details(url: str):
     if isPlaylist(url):
-        return _playlist_details(url)
+        return __playlist_details__(url)
     else:
-        return _song_details(url)
+        return __song_details__(url)
 
 
-def _song_details(url):
+def __song_details__(url):
     size = pyreq.filesize(url)
 
     song = pt.YouTube(url, use_oauth=True)
@@ -38,7 +38,7 @@ def _song_details(url):
     }
 
 
-def _playlist_details(url):
+def __playlist_details__(url):
     pl = pt.Playlist(url)
 
     try:
@@ -51,11 +51,11 @@ def _playlist_details(url):
         }
     except:
         return {
-            'author': 'Playlist is private',
-            'title': 'Playlist is private',
-            'length': 'Playlist is private',
-            'size': 'Playlist is private',
-            'url': 'Playlist is private'
+            'author': None,
+            'title': None,
+            'length': None,
+            'size': None,
+            'url': None
         }
 
 
@@ -76,13 +76,7 @@ def isAvailable(url: str) -> VideoType:
 
 def isPlaylist(url: str) -> bool:
     try:
-        try:
-            s = pt.YouTube(url)
-            return False
-        except:
-            pt.Playlist(url)
-
+        pt.Playlist(url)
     except:
-        raise NotYouTubeURL(None)
-
+        return False
     return True
