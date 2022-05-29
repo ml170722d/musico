@@ -3,7 +3,7 @@ import logging
 import pytube as pt
 import pytube.request as pyreq
 import pytube.exceptions as exceptions
-import exception as ex
+# import exception as ex
 
 
 class Song:
@@ -14,8 +14,10 @@ class Song:
         try:
             self.song = pt.YouTube(url)
             self.size = pyreq.filesize(url)
-        except exceptions.RegexMatchError:
-            raise ex.NotYouTubeSong()
+        # TODO: Fix import exception
+        except exceptions.RegexMatchError as e:
+            print(e)
+            # raise ex.NotYouTubeSong()
         except Exception as e:
             logging.warn(e)
             self.song = None
