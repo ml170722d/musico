@@ -1,4 +1,3 @@
-import imp
 import logging
 import pytube as pt
 import pytube.request as pyreq
