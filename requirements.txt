@@ -1,5 +1,8 @@
 autopep8==1.6.0
+coloredlogs==15.0.1
+humanfriendly==10.0
 pycodestyle==2.8.0
 pytube==12.1.0
+PyYAML==6.0
 toml==0.10.2
 youtube-dl==2021.12.17
