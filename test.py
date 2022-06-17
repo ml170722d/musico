@@ -1,5 +1,5 @@
 import os
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 from tkinter import ttk
 from tkinter import *
 import src.app as app
@@ -39,7 +39,7 @@ def test():
         songs.append(app.Song(url))
         # os.system(f'youtube-dl -o {url} {url}')
 
-    with Pool(3) as pool:
+    with Pool(cpu_count()) as pool:
         result = pool.map(dl, songs)
         print(result)
 
