@@ -2,4 +2,6 @@ import src.gui as gui
 
 
 if __name__ == '__main__':
-    gui.init()
+    app = gui.App()
+    app.start()
+    pass

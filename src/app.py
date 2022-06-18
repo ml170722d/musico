@@ -11,7 +11,7 @@ import pytube.request as pyreq
 import pytube.exceptions as exceptions
 import youtube_dl
 
-
+# TODO: Mode to somekind of setup file/dir
 def setup_logging(default_path='logging.config.yaml', default_level=logging.INFO, env_key='LOG_CFG'):
     """
     | **@author:** Prathyush SP
@@ -38,9 +38,9 @@ def setup_logging(default_path='logging.config.yaml', default_level=logging.INFO
         print('Failed to load configuration file. Using default configs')
 
 
-setup_logging()
+# setup_logging()
 
-
+# TODO: Move to separate file
 class Song:
     song: pt.YouTube | None
     size: int
@@ -90,6 +90,7 @@ class Song:
         return True
 
     def download(self):
+        # TODO: Move to config file of something like that
         ydl_opts = {
             'format': 'bestaudio/best',
             'outtmpl': f'./test/{self.author} - {self.title}.mp3',
@@ -107,12 +108,12 @@ class Song:
 
         pass
 
-
+# TODO: Move to separate file
 class NotYouTubeURL(Exception):
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
 
-
+# TODO: Move to separate file
 class NotYouTubeSong(Exception):
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
