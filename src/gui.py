@@ -1,30 +1,85 @@
 from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
-
-import os
-import signal
 from threading import Thread
 import multiprocessing as mp
+import os
+import time
 from tkinter import ttk
 from tkinter import *
+
 import src.app as app
 import logging
 
 logger = logging.getLogger(__name__)
 
+COLUMN = {
+    # 'ttk_main_panel': 0,
+    'ttk_song_card_list': 0,
+    'download_button': 1,
+    'exit_button': 0,
+    'load_button': 1,
+    'msg_label': 0,
+    'url_input': 0,
+}
+
+ROW = {
+    # 'ttk_main_panel': 0,
+    'ttk_song_card_list': 1,
+    'download_button': 2,
+    'exit_button': 3,
+    'load_button': 0,
+    'msg_label': 2,
+    'url_input': 0,
+}
+
 
 class App(Tk):
-    labelText: StringVar
     songs: list[app.Song]
+    label_text: StringVar
     url: StringVar
-    errorMsg: StringVar
+    loaded: bool
+
+    ttk_song_card_list: ttk.Frame
+    ttk_main_panel: ttk.Frame
+    ttk_input_url: ttk.Entry
+    ttk_label_msg: ttk.Label
+
+    INPUT_URL_PACEHOLDER = 'Enter song or playlint link here'
 
     def __init__(self) -> None:
         super().__init__()
-        self.labelText = StringVar()
-        self.errorMsg = StringVar()
+        self.label_text = StringVar()
         self.url = StringVar()
         self.songs = []
+        self.loaded = False
+
+        self.ttk_main_panel = ttk.Frame(self, padding=10)
+        self.ttk_main_panel.grid()
+
+        ttk.Button(self.ttk_main_panel, text="Download", command=Thread(
+            target=self.start_download).start).grid(column=COLUMN['download_button'], row=ROW['download_button'])
+
+        self.ttk_label_msg = ttk.Label(self.ttk_main_panel, textvariable=self.label_text).grid(
+            column=COLUMN['msg_label'], row=ROW['msg_label'])
+
+        ttk.Button(self.ttk_main_panel, text="Load", command=lambda: Thread(
+            target=self.loadUrl).start()).grid(column=COLUMN['load_button'], row=ROW['load_button'])
+
+        self.ttk_input_url = ttk.Entry(
+            self.ttk_main_panel, width=75, textvariable=self.url)
+        self.ttk_input_url.grid(
+            column=COLUMN['url_input'], row=ROW['url_input'])
+        self.ttk_input_url.insert(0, self.INPUT_URL_PACEHOLDER)
+        self.ttk_input_url.bind('<Button-1>', self.remove_paceholder)
+
+        self.ttk_song_card_list = ttk.Frame(
+            self.ttk_main_panel, padding=10)
+
+        ttk.Button(self.ttk_main_panel, text="Exit",
+                   command=self.end).grid(column=COLUMN['exit_button'], row=ROW['exit_button'])
+
+    def remove_paceholder(self, *args):
+        self.ttk_input_url.delete(0, 'end')
 
     @staticmethod
     def download(song: app.Song) -> bool:
@@ -44,48 +99,98 @@ class App(Tk):
         return False
 
     def start_download(self):
+        if not self.loaded:
+            self.label_text.set("Load song or playlist first!!!")
+            return
+
+        self.label_text.set("Downloading...")
         with ThreadPoolExecutor(max_workers=mp.cpu_count()) as pool:
             results = pool.map(self.download, self.songs)
 
         for r in results:
             if (r != True):
-                self.labelText.set("Fail!!!")
+                self.label_text.set("Fail!!!")
 
-        self.labelText.set("Success!!!")
+        self.label_text.set("Success!!!")
 
     def loadUrl(self):
-        url = self.url.get()
-        print(url)
-        try:
-            pl = app.PlayList(url)
-            self.songs = pl.getSongs()
-        except:
-            try:
-                song = app.Song(url)
-                self.songs.append(song)
-            except:
-                self.labelText.set("Invalid url")
-                return
-            pass
-        self.labelText.set("")
+        task = TextChangingTask(self.label_text, [
+            "Loading",
+            "Loading.",
+            "Loading..",
+            "Loading...",
+        ])
+        thread = Thread(target=task.run)
+        thread.start()
+        # url = self.url.get()
+        # print(url)
+        # try:
+        #     pl = app.PlayList(url)
+        #     self.songs = pl.getSongs()
+        # except:
+        #     try:
+        #         song = app.Song(url)
+        #         self.songs.append(song)
+        #     except:
+        #         self.label_text.set("Invalid url")
+        #         return
+        #     pass
+        # self.label_text.set("")
+        self.add_song_list_frame([])
+
+        task.terminate()
+        thread.join()
+        self.label_text.set("")
+
+        self.loaded = True
         pass
 
+    def add_song_list_frame(self, songs: list[app.Song]) -> None:
+        if self.loaded:
+            self.ttk_song_card_list.grid_forget()
+            time.sleep(5)
+            self.loaded = False
+
+        self.ttk_song_card_list.grid(
+            column=COLUMN['ttk_song_card_list'], row=ROW['ttk_song_card_list'])
+        ttk.Button(self.ttk_song_card_list, text="QWERTY",
+                   command=lambda: print("button")).grid(column=0, row=0)
+
     def start(self):
-        panel = ttk.Frame(self, padding=10)
-        panel.grid()
-
-        ttk.Label(panel, textvariable=self.labelText).grid(column=1, row=0)
-
-        ttk.Button(panel, text="Download", command=Thread(
-            target=self.start_download).start).grid(column=0, row=0)
-        ttk.Button(panel, text="Load", command=self.loadUrl).grid(
-            column=0, row=1)
-        ttk.Entry(panel, width=100, textvariable=self.url).grid(
-            column=0, row=2)
-        ttk.Button(panel, text="Exit", command=self.end).grid(column=10, row=10)
-
         self.mainloop()
 
     def end(self):
-        os.killpg(os.getpid(), signal.SIGTERM)
         self.destroy()
+
+
+class ChankingTask:
+    running: bool
+
+    def __init__(self) -> None:
+        self.running = True
+        pass
+
+    def run(self):
+        pass
+
+    def terminate(self):
+        self.running = False
+
+
+class TextChangingTask(ChankingTask):
+    label: StringVar
+    TIMEOUT = 0.3
+    text_arr: list[str]
+
+    def __init__(self, label: StringVar, text_array: list[str]) -> None:
+        super().__init__()
+        self.label = label
+        self.text_arr = text_array
+
+    def run(self):
+        while True:
+            for text in self.text_arr:
+                self.label.set(text)
+                if not self.running:
+                    return
+                time.sleep(self.TIMEOUT)
