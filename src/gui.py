@@ -6,6 +6,7 @@ import os
 import time
 from tkinter import ttk
 from tkinter import *
+import webbrowser
 
 import src.app as app
 import logging
@@ -20,16 +21,18 @@ COLUMN = {
     'load_button': 1,
     'msg_label': 0,
     'url_input': 0,
+    'ttk_report_bug': 0
 }
 
 ROW = {
     # 'ttk_main_panel': 0,
     'ttk_song_card_list': 1,
     'download_button': 2,
-    'exit_button': 3,
+    'exit_button': 4,
     'load_button': 0,
     'msg_label': 2,
     'url_input': 0,
+    'ttk_report_bug': 3
 }
 
 
@@ -42,7 +45,6 @@ class App(Tk):
     ttk_song_card_list: ttk.Frame
     ttk_main_panel: ttk.Frame
     ttk_input_url: ttk.Entry
-    ttk_label_msg: ttk.Label
 
     INPUT_URL_PACEHOLDER = 'Enter song or playlint link here'
 
@@ -59,7 +61,7 @@ class App(Tk):
         ttk.Button(self.ttk_main_panel, text="Download", command=Thread(
             target=self.start_download).start).grid(column=COLUMN['download_button'], row=ROW['download_button'])
 
-        self.ttk_label_msg = ttk.Label(self.ttk_main_panel, textvariable=self.label_text).grid(
+        ttk.Label(self.ttk_main_panel, textvariable=self.label_text).grid(
             column=COLUMN['msg_label'], row=ROW['msg_label'])
 
         ttk.Button(self.ttk_main_panel, text="Load", command=lambda: Thread(
@@ -77,6 +79,9 @@ class App(Tk):
 
         ttk.Button(self.ttk_main_panel, text="Exit",
                    command=self.end).grid(column=COLUMN['exit_button'], row=ROW['exit_button'])
+
+        ttk.Button(self.ttk_main_panel, text="Report Bugs", command=lambda: webbrowser.open(
+            'https://github.com/ml170722d/musico/issues/new')).grid(column=COLUMN['ttk_report_bug'], row=ROW['ttk_report_bug'])
 
     def remove_paceholder(self, *args):
         self.ttk_input_url.delete(0, 'end')
