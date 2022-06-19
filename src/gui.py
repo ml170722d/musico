@@ -1,9 +1,10 @@
 from __future__ import annotations
-from cgi import test
+from concurrent.futures import ThreadPoolExecutor
 
-import os, signal
+import os
+import signal
 from threading import Thread
-from multiprocessing import Pool, cpu_count
+import multiprocessing as mp
 from tkinter import ttk
 from tkinter import *
 import src.app as app
@@ -11,14 +12,22 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class App(Tk):
-    label: StringVar
+    labelText: StringVar
+    songs: list[app.Song]
+    url: StringVar
+    errorMsg: StringVar
 
     def __init__(self) -> None:
         super().__init__()
+        self.labelText = StringVar()
+        self.errorMsg = StringVar()
+        self.url = StringVar()
+        self.songs = []
 
     @staticmethod
-    def _download(song: app.Song):
+    def download(song: app.Song) -> bool:
         for i in range(3):
             try:
                 logger.debug("I'm process", os.getpid())
@@ -27,51 +36,53 @@ class App(Tk):
                 logger.warning(f'Process: {os.getpid()} fail number: {i+1}')
                 continue
 
-            logger.info(f'Successfully downloaded: {song.author} - {song.title}')
+            logger.info(
+                f'Successfully downloaded: {song.author} - {song.title}')
             return True
 
         logger.info(f'Failed to download: {song.author} - {song.title}')
         return False
 
-    def test(self):
-        songs = []
-        urls = [
-            'https://www.youtube.com/watch?v=E8Ms56gX-Tc',
-            'https://www.youtube.com/watch?v=fOg7mj1_-sk',
-            'https://www.youtube.com/watch?v=bCt6T5KBID0',
-            'https://www.youtube.com/watch?v=EAeZPiZbpvw',
-            'https://www.youtube.com/watch?v=bQKK8gLjKHY',
-            'https://www.youtube.com/watch?v=OKEyUfGH2tQ'
-        ]
-        for url in urls:
-            songs.append(app.Song(url))
+    def start_download(self):
+        with ThreadPoolExecutor(max_workers=mp.cpu_count()) as pool:
+            results = pool.map(self.download, self.songs)
 
-        with Pool(cpu_count()) as pool:
-            result = pool.map(self._download, songs)
-            print(result)
-
-        for r in result:
+        for r in results:
             if (r != True):
-                self.label.set("Fail!!!")
+                self.labelText.set("Fail!!!")
 
-        self.label.set("Success!!!")
+        self.labelText.set("Success!!!")
 
-    # def test(self):
-    #     thread = Thread(target=self.test2)
-    #     thread.start()
-    #     pass
+    def loadUrl(self):
+        url = self.url.get()
+        print(url)
+        try:
+            pl = app.PlayList(url)
+            self.songs = pl.getSongs()
+        except:
+            try:
+                song = app.Song(url)
+                self.songs.append(song)
+            except:
+                self.labelText.set("Invalid url")
+                return
+            pass
+        self.labelText.set("")
+        pass
 
     def start(self):
         panel = ttk.Frame(self, padding=10)
         panel.grid()
 
-        self.label = StringVar()
-        self.label.set("Not started")
-        ttk.Label(panel, textvariable=self.label).grid(column=1, row=0)
+        ttk.Label(panel, textvariable=self.labelText).grid(column=1, row=0)
 
-
-        ttk.Button(panel, text="Test", command=Thread(target=self.test).start).grid(column=0, row=0)
-        ttk.Button(panel, text="Exit", command=self.end).grid(column=0, row=1)
+        ttk.Button(panel, text="Download", command=Thread(
+            target=self.start_download).start).grid(column=0, row=0)
+        ttk.Button(panel, text="Load", command=self.loadUrl).grid(
+            column=0, row=1)
+        ttk.Entry(panel, width=100, textvariable=self.url).grid(
+            column=0, row=2)
+        ttk.Button(panel, text="Exit", command=self.end).grid(column=10, row=10)
 
         self.mainloop()
 
