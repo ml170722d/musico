@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import yaml
 import logging.config
 import logging
@@ -93,7 +94,7 @@ class Song:
         # TODO: Move to config file of something like that
         ydl_opts = {
             'format': 'bestaudio/best',
-            'outtmpl': f'./test/{self.author} - {self.title}.mp3',
+            'outtmpl': f'./data/downloads/{self.author} - {self.title}.mp3',
             'noplaylist': True,
             'continue_dl': True,
             'postprocessors': [{
@@ -106,10 +107,36 @@ class Song:
             ydl.cache.remove()
             ydl.download([self.url])
 
+
         pass
+
+class PlayList:
+    url: str
+
+    def __init__(self, url: str) -> None:
+        if re.match('.*youtube.*list=.*', url) is None:
+            raise NotYouTubePlaylist()
+        self.url = url
+
+    def getSongs(self) -> list[Song]:
+        list = []
+        pl = pt.Playlist(self.url)
+
+        for song_url in pl.video_urls:
+            song = Song(song_url)
+            list.append(song)
+
+        return list
+
+
 
 # TODO: Move to separate file
 class NotYouTubeURL(Exception):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
+
+# TODO: Move to separate file
+class NotYouTubePlaylist(Exception):
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
 
