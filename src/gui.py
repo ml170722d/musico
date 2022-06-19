@@ -120,6 +120,10 @@ class App(Tk):
         self.label_text.set("Success!!!")
 
     def loadUrl(self):
+        if self.loaded:
+            self.ttk_song_card_list.grid_forget()
+            self.loaded = False
+
         task = TextChangingTask(self.label_text, [
             "Loading",
             "Loading.",
@@ -129,20 +133,21 @@ class App(Tk):
         thread = Thread(target=task.run)
         thread.start()
 
-        # url = self.url.get()
-        # print(url)
-        # try:
-        #     pl = app.PlayList(url)
-        #     self.songs = pl.getSongs()
-        # except:
-        #     try:
-        #         song = app.Song(url)
-        #         self.songs.append(song)
-        #     except:
-        #         self.label_text.set("Invalid url")
-        #         return
-        #     pass
-        # self.label_text.set("")
+        url = self.url.get()
+        print(url)
+        try:
+            pl = app.PlayList(url)
+            self.songs = pl.getSongs()
+        except:
+            try:
+                song = app.Song(url)
+                self.songs.append(song)
+            except:
+                task.terminate()
+                thread.join()
+                self.label_text.set("Invalid url")
+                return
+            pass
 
         self.add_song_list_frame([])
 
@@ -154,11 +159,6 @@ class App(Tk):
         pass
 
     def add_song_list_frame(self, songs: list[app.Song]) -> None:
-        if self.loaded:
-            self.ttk_song_card_list.grid_forget()
-            time.sleep(5)
-            self.loaded = False
-
         self.ttk_song_card_list.grid(
             column=COLUMN['ttk_song_card_list'], row=ROW['ttk_song_card_list'])
         ttk.Button(self.ttk_song_card_list, text="QWERTY",
