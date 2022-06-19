@@ -7,9 +7,10 @@ import time
 from tkinter import ttk
 from tkinter import *
 import webbrowser
+import logging
 
 import src.app as app
-import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +128,7 @@ class App(Tk):
         ])
         thread = Thread(target=task.run)
         thread.start()
+
         # url = self.url.get()
         # print(url)
         # try:
@@ -141,6 +143,7 @@ class App(Tk):
         #         return
         #     pass
         # self.label_text.set("")
+
         self.add_song_list_frame([])
 
         task.terminate()
