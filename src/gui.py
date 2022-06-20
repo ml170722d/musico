@@ -109,15 +109,29 @@ class App(Tk):
             self.label_text.set("Load song or playlist first!!!")
             return
 
-        self.label_text.set("Downloading...")
+        task = TextChangingTask(self.label_text, [
+            "Downloading",
+            "Downloading.",
+            "Downloading..",
+            "Downloading...",
+        ])
+        thread = Thread(target=task.run)
+        thread.start()
+
         with ThreadPoolExecutor(max_workers=mp.cpu_count()) as pool:
             results = pool.map(self.download, self.songs)
 
         for r in results:
             if (r != True):
+                task.terminate()
+                thread.join()
                 self.label_text.set("Fail!!!")
+                return
 
+        task.terminate()
+        thread.join()
         self.label_text.set("Success!!!")
+        pass
 
     def loadUrl(self):
         if self.loaded:
