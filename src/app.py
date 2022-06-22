@@ -51,6 +51,7 @@ class Song:
     length: str
     url: str
     thumbnail_url: str
+    album: str
 
     def __init__(self, url: str) -> None:
         try:
@@ -62,6 +63,7 @@ class Song:
             self.length = self.song.length
             self.url = self.song.watch_url
             self.thumbnail_url = self.song.thumbnail_url
+            self.album = ''
 
         # TODO: Fix import exception
         except exceptions.RegexMatchError as e:
