@@ -1,13 +1,10 @@
 from __future__ import annotations
-from cmath import sin
 from concurrent.futures import ThreadPoolExecutor
 from threading import Thread
 import multiprocessing as mp
-import os
 import time
 from tkinter import ttk
 from tkinter import *
-from turtle import update
 import webbrowser
 import logging
 
@@ -16,98 +13,100 @@ import src.app as app
 
 logger = logging.getLogger(__name__)
 
-COLUMN = {
-    # 'ttk_main_panel': 0,
-    'ttk_song_card_list': 0,
-    'download_button': 10,
-    'exit_button': 0,
-    'load_button': 10,
-    'msg_label': 0,
-    'url_input': 0,
-    'ttk_report_bug': 0
-}
-
-ROW = {
-    # 'ttk_main_panel': 0,
-    'ttk_song_card_list': 10,
-    'download_button': 20,
-    'exit_button': 40,
-    'load_button': 0,
-    'msg_label': 20,
-    'url_input': 0,
-    'ttk_report_bug': 30
-}
-
 
 class App(Tk):
-    songs: list[app.Song]
-    label_text: StringVar
-    url: StringVar
-    curr_song: StringVar
-    loaded: bool
-
-    ttk_song_card_list: ttk.Frame
-    ttk_main_panel: ttk.Frame
-    ttk_input_url: ttk.Entry
-    ttk_opt_manu: OptionMenu
-
-    edit_panel: EditPanel
-
-    INPUT_URL_PACEHOLDER = 'Enter song or playlint link here'
+    app_panel: AppPanel
 
     def __init__(self) -> None:
         super().__init__()
-        self.label_text = StringVar()
-        self.url = StringVar()
-        self.songs = []
+        self.app_panel = AppPanel(self, self.end)
+        self.app_panel.grid(column=0, row=0)
+
+    def start(self):
+        self.mainloop()
+
+    def end(self):
+        self.destroy()
+
+
+class AppPanel(Frame):
+    label_var: StringVar
+    loaded: bool
+    edit_panel: EditPanel
+
+    def __init__(self, master: Misc | None, end_cb) -> None:
+        super().__init__(master)
+        self.label_var = StringVar()
         self.loaded = False
 
-        self.ttk_main_panel = ttk.Frame(self, padding=10)
-        self.ttk_main_panel.grid()
-
-        ttk.Button(self.ttk_main_panel, text="Download", command=Thread(
-            target=self.start_download).start).grid(column=COLUMN['download_button'], row=ROW['download_button'])
-
-        ttk.Label(self.ttk_main_panel, textvariable=self.label_text).grid(
-            column=COLUMN['msg_label'], row=ROW['msg_label'])
-
-        # ttk.Button(self.ttk_main_panel, text="Load", command=lambda: Thread(
-        #     target=self.loadUrl).start()).grid(column=COLUMN['load_button'], row=ROW['load_button'])
-
-        # self.ttk_input_url = ttk.Entry(
-        #     self.ttk_main_panel, width=75, textvariable=self.url)
-        # self.ttk_input_url.grid(
-        #     column=COLUMN['url_input'], row=ROW['url_input'])
-        # self.ttk_input_url.insert(0, self.INPUT_URL_PACEHOLDER)
-        # self.ttk_input_url.bind(
-        #     '<Button-1>', lambda *args: self.ttk_input_url.delete(0, 'end'))
-
+        # input feild and load button
         InputPanel(self, self.load).grid(column=0, row=0)
 
-        self.edit_panel = EditPanel(self, self.songs)
-        self.edit_panel.grid(column=0, row=1)
+        # label for displaying app status
+        Label(self, textvariable=self.label_var).grid(
+            column=0, row=1)
 
-        self.ttk_song_card_list = ttk.Frame(
-            self.ttk_main_panel, padding=10)
+        # Download button
+        Button(self, text="Download", command=Thread(
+            target=self.start_download).start).grid(column=1, row=1)
 
-        ttk.Button(self.ttk_main_panel, text="Exit",
-                   command=self.end).grid(column=COLUMN['exit_button'], row=ROW['exit_button'])
+        # panel for editing song info
+        self.edit_panel = EditPanel(self)
+        self.edit_panel.grid(column=0, row=2)
 
-        ttk.Button(self.ttk_main_panel, text="Report Bugs", command=lambda: webbrowser.open(
-            'https://github.com/ml170722d/musico/issues/new')).grid(column=COLUMN['ttk_report_bug'], row=ROW['ttk_report_bug'])
+        Button(self, text="Exit",
+               command=end_cb).grid(column=2, row=3)
 
-        self.curr_song = StringVar()
-        self.ttk_opt_manu = OptionMenu(
-            self.ttk_song_card_list, self.curr_song, [])
+        Button(self, text="Report Bugs", command=lambda: webbrowser.open(
+            'https://github.com/ml170722d/musico/issues/new')).grid(column=1, row=3)
 
-    @staticmethod
-    def download(song: app.Song) -> bool:
+    def load(self, url) -> None:
+        t = Thread(target=lambda: self.loadUrl(url))
+        t.setDaemon(True)
+        t.start()
+        pass
+
+    def loadUrl(self, url: str) -> None:
+        task = TextChangingTask(self.label_var, [
+            "Loading",
+            "Loading.",
+            "Loading..",
+            "Loading...",
+        ])
+        thread = Thread(target=task.run)
+        thread.setDaemon(True)
+        thread.start()
+
+        songs = []
+        try:
+            pl = app.PlayList(url)
+            songs = pl.getSongs()
+        except:
+            try:
+                song = app.Song(url)
+                songs.append(song)
+            except:
+                task.terminate()
+                thread.join()
+                self.label_var.set("Invalid url")
+                return
+            pass
+
+        task.terminate()
+        thread.join()
+
+        self.label_var.set("Loaded")
+        self.loaded = True
+        self.edit_panel.set_song_list(songs)
+        pass
+
+    def download(self, song: app.Song) -> bool:
         for i in range(3):
             try:
-                logger.debug("I'm process", os.getpid())
+                # logger.debug("I'm process", os.getpid())
                 song.download()
             except:
-                logger.warning(f'Process: {os.getpid()} fail number: {i+1}')
+                # logger.warning(f'Process: {os.getpid()} fail number: {i+1}')
                 continue
 
             logger.info(
@@ -117,12 +116,14 @@ class App(Tk):
         logger.info(f'Failed to download: {song.author} - {song.title}')
         return False
 
-    def start_download(self):
+    def start_download(self) -> None:
+        edited_songs = self.edit_panel.get_edited_songs()
+
         if not self.loaded:
-            self.label_text.set("Load song or playlist first!!!")
+            self.label_var.set("Load song or playlist first!!!")
             return
 
-        task = TextChangingTask(self.label_text, [
+        task = TextChangingTask(self.label_var, [
             "Downloading",
             "Downloading.",
             "Downloading..",
@@ -133,88 +134,21 @@ class App(Tk):
         thread.start()
 
         with ThreadPoolExecutor(max_workers=mp.cpu_count()) as pool:
-            results = pool.map(self.download, self.songs)
+            results = pool.map(self.download, edited_songs)
 
         for r in results:
             if (r != True):
                 task.terminate()
                 thread.join()
-                self.label_text.set("Fail!!!")
+
+                self.label_var.set("Could not download all selected song(s)")
                 return
 
         task.terminate()
         thread.join()
-        self.label_text.set("Success!!!")
+
+        self.label_var.set("Success!!!")
         pass
-
-    def load(self, url):
-        t = Thread(target=lambda: self.loadUrl(url))
-        t.setDaemon(True)
-        t.start()
-        pass
-
-    def loadUrl(self, url: str):
-        if self.loaded:
-            self.ttk_song_card_list.grid_forget()
-            self.loaded = False
-            self.songs = []
-
-        task = TextChangingTask(self.label_text, [
-            "Loading",
-            "Loading.",
-            "Loading..",
-            "Loading...",
-        ])
-        thread = Thread(target=task.run)
-        thread.setDaemon(True)
-        thread.start()
-
-        # url = self.url.get()
-        try:
-            pl = app.PlayList(url)
-            self.songs = pl.getSongs()
-        except:
-            try:
-                song = app.Song(url)
-                self.songs.append(song)
-            except:
-                task.terminate()
-                thread.join()
-                self.label_text.set("Invalid url")
-                return
-            pass
-
-        self.add_song_list_frame(self.songs)
-
-        task.terminate()
-        thread.join()
-        self.label_text.set("")
-
-        self.edit_panel.set_song_list(self.songs)
-
-        self.loaded = True
-        pass
-
-    def add_song_list_frame(self, songs: list[app.Song]) -> None:
-        self.ttk_song_card_list.grid(
-            column=COLUMN['ttk_song_card_list'], row=ROW['ttk_song_card_list'])
-        self.update_dropdown_list()
-
-        pass
-
-    def update_dropdown_list(self):
-        menu = self.ttk_opt_manu["menu"]
-        menu.delete(0, "end")
-        for song in self.songs:
-            menu.add_command(label=song.title,
-                             command=lambda value=song.title: self.curr_song.set(value))
-        pass
-
-    def start(self):
-        self.mainloop()
-
-    def end(self):
-        self.destroy()
 
 
 class InputPanel(Frame):
@@ -252,17 +186,19 @@ class EditPanel(Frame):
         self.all_titles = []
         self.om = OptionMenu(self, self.curr, self.all_titles)
         self.om.grid(column=0, row=0)
+        self.om.bind('<ButtonRelease>', lambda *args: self.show())
 
-        Button(self, text='View', command=self.show).grid(column=1, row=0)
+        # Button(self, text='View', command=self.show).grid(column=1, row=0)
 
         self.song_panel = SongPanel(self, self.update_song)
-        self.song_panel.grid(column=0,row=1)
+        self.song_panel.grid(column=0, row=1)
 
     def set_song_list(self, songs: list[app.Song]):
         self.songs = songs
         self.all_titles = [song.title for song in self.songs]
         self.curr.set(self.all_titles[0])
         self.update()
+        self.show()
         pass
 
     def show(self):
@@ -292,6 +228,9 @@ class EditPanel(Frame):
         self.update()
 
         pass
+
+    def get_edited_songs(self) -> list[app.Song]:
+        return self.songs
 
 
 class SongPanel(ttk.Frame):
