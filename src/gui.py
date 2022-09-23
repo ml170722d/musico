@@ -1,5 +1,6 @@
 from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
+# import os
 from threading import Thread
 import multiprocessing as mp
 import time
@@ -133,7 +134,8 @@ class AppPanel(Frame):
         thread.setDaemon(True)
         thread.start()
 
-        with ThreadPoolExecutor(max_workers=mp.cpu_count()) as pool:
+        # with ThreadPoolExecutor(max_workers=mp.cpu_count()) as pool:
+        with ThreadPoolExecutor(max_workers=1) as pool:
             results = pool.map(self.download, edited_songs)
 
         for r in results:
@@ -143,6 +145,12 @@ class AppPanel(Frame):
 
                 self.label_var.set("Could not download all selected song(s)")
                 return
+
+
+        for song in edited_songs:
+            app.MP3TagEditor(app.LOCATION, song)
+            pass
+
 
         task.terminate()
         thread.join()

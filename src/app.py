@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+# from tkinter.tix import InputOnly
 import yaml
 import logging.config
 import logging
@@ -10,7 +11,10 @@ import coloredlogs
 import pytube as pt
 import pytube.request as pyreq
 import pytube.exceptions as exceptions
-import youtube_dl
+# import youtube_dl
+import music_tag as mt
+
+LOCATION = './data/downloads'
 
 # TODO: Mode to somekind of setup file/dir
 def setup_logging(default_path='logging.config.yaml', default_level=logging.INFO, env_key='LOG_CFG'):
@@ -48,10 +52,10 @@ class Song:
 
     author: str
     title: str
+    album: str
     length: str
     url: str
     thumbnail_url: str
-    album: str
 
     def __init__(self, url: str) -> None:
         try:
@@ -94,20 +98,30 @@ class Song:
 
     def download(self):
         # TODO: Move to config file of something like that
-        ydl_opts = {
-            'format': 'bestaudio/best',
-            'outtmpl': f'./data/downloads/{self.author} - {self.title}.mp3',
-            'noplaylist': True,
-            'continue_dl': True,
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192', }]
-        }
 
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            ydl.cache.remove()
-            ydl.download([self.url])
+        self.author = ''.join(self.author.split('\\')).strip()
+        self.title = ''.join(self.title.split('\\')).strip()
+
+        try:
+            itag = self.song.streams.filter(only_audio=True).get_audio_only().itag
+            self.song.streams.get_by_itag(itag).download(output_path=f'{LOCATION}', filename=f'{self.author} - {self.title}.mp3')
+        except Exception as e:
+            print(f'Faild to download {self.author} - {self.title}! ({self.url})')
+
+        # ydl_opts = {
+        #     'format': 'bestaudio/best',
+        #     'outtmpl': f'{LOCATION}/{self.album}/{self.author} - {self.title}.mp3',
+        #     'noplaylist': True,
+        #     'continue_dl': True,
+        #     'postprocessors': [{
+        #         'key': 'FFmpegExtractAudio',
+        #         'preferredcodec': 'mp3',
+        #         'preferredquality': '192', }]
+        # }
+
+        # with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        #     ydl.cache.remove()
+        #     ydl.download([self.url])
 
 
         pass
@@ -130,7 +144,18 @@ class PlayList:
 
         return list
 
+class MP3TagEditor:
+    def __init__(self, location: str, song: Song) -> None:
+        try:
+            file = mt.load_file(f'{location}/{song.album}/{song.author} - {song.title}.mp3')
+            file['artist'] = song.author
+            file['title'] = song.title
+            file['album'] = song.album
+            file.save()
+        except Exception as e:
+            print(f'Error editing tags for "{location}/{song.album}/{song.author} - {song.title}.mp3": {e}')
 
+        pass
 
 # TODO: Move to separate file
 class NotYouTubeURL(Exception):
